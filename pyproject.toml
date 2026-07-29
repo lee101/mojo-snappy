@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mojo-snappy"
+version = "0.1.0"
+description = "Snappy block compression implemented in Mojo"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]
