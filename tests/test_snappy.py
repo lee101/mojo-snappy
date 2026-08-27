@@ -84,7 +84,9 @@ def test_boundary_sizes_cross_compatible(size):
     assert snappy.decompress(theirs) == source
 
 
-@pytest.mark.parametrize("size", [31, 32, 33, 63, 64, 65, 95, 96, 97])
+@pytest.mark.parametrize(
+    "size", [31, 32, 33, 63, 64, 65, 95, 96, 97, 127, 128, 129, 159, 160, 161]
+)
 def test_simd_copy_tails_cross_compatible(size):
     source = bytes((i * 131 + 17) & 255 for i in range(size))
     ours = snappy.compress(source)

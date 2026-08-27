@@ -58,7 +58,7 @@ usage example runs directly from the checkout.
 ## Performance
 
 Measured with `pixi run bench` on an Intel Xeon E5-2697 v4 at 2.30 GHz, Linux
-x86-64, Python 3.13.14, Mojo `1.0.0b3.dev2026072406`, and upstream
+x86-64, Python 3.13.14, Mojo `1.1.0.dev2026081105`, and upstream
 `python-snappy` 0.7.3. Each result is the best of seven timed runs after one
 warmup. Decode cases use the exact same upstream-produced compressed block.
 Relative is upstream time divided by mojo-snappy time, so values above 1 mean
@@ -66,22 +66,24 @@ Mojo was faster.
 
 | case | mojo-snappy | python-snappy | relative |
 | --- | ---: | ---: | ---: |
-| compress, repetitive 8 MiB | 0.971 ms | 1.846 ms | 1.90x |
-| decompress, repetitive 8 MiB | 1.433 ms | 2.134 ms | 1.49x |
-| compress, random 8 MiB | 2.686 ms | 2.541 ms | 0.95x |
-| decompress, random 8 MiB | 1.681 ms | 1.930 ms | 1.15x |
-| compress, repetitive 4 KiB | 0.005 ms | 0.006 ms | 1.06x |
-| decompress, repetitive 4 KiB | 0.004 ms | 0.004 ms | 0.98x |
+| compress, repetitive 8 MiB | 0.960 ms | 1.492 ms | 1.56x |
+| decompress, repetitive 8 MiB | 0.957 ms | 2.086 ms | 2.18x |
+| compress, random 8 MiB | 1.906 ms | 1.987 ms | 1.04x |
+| decompress, random 8 MiB | 0.907 ms | 1.637 ms | 1.80x |
+| compress, repetitive 4 KiB | 0.005 ms | 0.005 ms | 1.04x |
+| decompress, repetitive 4 KiB | 0.004 ms | 0.004 ms | 0.96x |
 
-Mojo wins four of these six measured cases. Upstream is slightly faster for
-random-data compression and the 4 KiB decode. Fixed Python-to-FFI call overhead
-remains significant for such short work.
+Mojo wins five of these six measured cases. The 4 KiB decode is within
+measurement noise of parity; fixed Python-to-FFI call overhead dominates such
+short work.
 
 No multithreaded or GPU path is included. Decode commands depend on previously
-produced bytes, while parallel encoding would require per-fragment temporary
-outputs followed by another compaction copy. Snappy hashing and copying are
-memory-bound and below the arithmetic-intensity threshold where GPU transfer
-and launch overhead can pay off, so a GPU path is not justified.
+produced bytes. Encoding fragments are independent, but a measured parallel
+prototype required fixed-slot temporary output and a compaction copy; that
+regressed incompressible input enough to outweigh its compressible-data gain.
+Snappy hashing and copying are memory-bound and below the roughly two
+flops-per-byte threshold where GPU transfer and launch overhead can pay off, so
+a GPU path is not justified.
 
 ## How it works
 
@@ -90,8 +92,9 @@ a bounds-checked decoder, and three C ABI exports. The encoder writes the
 uncompressed-size varint, divides input into 64 KiB fragments, and uses a
 16,384-entry hash table to find four-byte LZ77 matches. Matches become standard
 one- or two-byte-offset copy commands; incompressible ranges become literal
-commands. SIMD extends matches and copies literals and non-overlapping match
-ranges, with scalar copying for short overlapping matches.
+commands. Four-way-unrolled SIMD copies literals and non-overlapping match
+ranges, SIMD extends matches, and scalar tails handle remainders and short
+overlapping matches.
 
 Python owns every allocation. A contiguous source buffer crosses the ABI as an
 integer address and is reconstructed in Mojo as
