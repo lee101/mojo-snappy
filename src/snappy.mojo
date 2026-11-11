@@ -15,23 +15,23 @@ def copy_bytes(dst: BPtr, dst_pos: Int, src: BPtr, src_pos: Int, size: Int):
     while i + 4 * BYTE_W <= size:
         dst.store[alignment=1](
             dst_pos + i,
-            src.load[width=BYTE_W, alignment=1](src_pos + i),
+            src.unsafe_load[width=BYTE_W, alignment=1](src_pos + i),
         )
         dst.store[alignment=1](
             dst_pos + i + BYTE_W,
-            src.load[width=BYTE_W, alignment=1](src_pos + i + BYTE_W),
+            src.unsafe_load[width=BYTE_W, alignment=1](src_pos + i + BYTE_W),
         )
         dst.store[alignment=1](
             dst_pos + i + 2 * BYTE_W,
-            src.load[width=BYTE_W, alignment=1](src_pos + i + 2 * BYTE_W),
+            src.unsafe_load[width=BYTE_W, alignment=1](src_pos + i + 2 * BYTE_W),
         )
         dst.store[alignment=1](
             dst_pos + i + 3 * BYTE_W,
-            src.load[width=BYTE_W, alignment=1](src_pos + i + 3 * BYTE_W),
+            src.unsafe_load[width=BYTE_W, alignment=1](src_pos + i + 3 * BYTE_W),
         )
         i += 4 * BYTE_W
     while i + BYTE_W <= size:
-        var values = src.load[width=BYTE_W, alignment=1](src_pos + i)
+        var values = src.unsafe_load[width=BYTE_W, alignment=1](src_pos + i)
         dst.store[alignment=1](dst_pos + i, values)
         i += BYTE_W
     while i < size:
@@ -41,7 +41,7 @@ def copy_bytes(dst: BPtr, dst_pos: Int, src: BPtr, src_pos: Int, size: Int):
 
 @always_inline
 def read32(src: BPtr, i: Int) -> UInt32:
-    return (src + i).bitcast[UInt32]().load[alignment=1]()
+    return (src + i).bitcast[UInt32]().unsafe_load[alignment=1]()
 
 
 @always_inline
@@ -180,10 +180,10 @@ def compress_fragment(
         var match_size = 4
         comptime BYTE_W = simdwidthof[DType.float64]() * 8
         while ip + match_size + BYTE_W <= fragment_end:
-            var candidate_values = src.load[width=BYTE_W, alignment=1](
+            var candidate_values = src.unsafe_load[width=BYTE_W, alignment=1](
                 candidate + match_size
             )
-            var input_values = src.load[width=BYTE_W, alignment=1](
+            var input_values = src.unsafe_load[width=BYTE_W, alignment=1](
                 ip + match_size
             )
             if candidate_values != input_values:
